@@ -1,0 +1,6 @@
+﻿services:
+  filestorage.webapi:
+    image: filestorage.webapi
+    build:
+      context: .
+      dockerfile: FileStorage.WebApi/Dockerfile
