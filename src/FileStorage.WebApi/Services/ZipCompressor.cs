@@ -24,8 +24,26 @@ public class ZipCompressor : ICompressor
         return outputStream;
     }
 
-    public Task<(Stream content, string fileName)> DecompressAsync(Stream input, CancellationToken cancellationToken)
+    public async Task<(Stream content, string fileName)> DecompressAsync(Stream input, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        var outputStream = new MemoryStream();
+        string fileName;
+        
+        var archive = new ZipArchive(input, ZipArchiveMode.Read,  leaveOpen: true);
+
+        try
+        {
+            var entry = archive.Entries[0];
+            fileName = entry.FullName;
+            var content = entry.Open();
+            await content.CopyToAsync(outputStream, cancellationToken);
+        }
+        finally
+        {
+            archive.Dispose();
+        }
+        
+        outputStream.Seek(0, SeekOrigin.Begin);
+        return (outputStream, fileName);
     }
 }

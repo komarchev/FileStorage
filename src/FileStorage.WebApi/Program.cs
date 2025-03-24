@@ -32,9 +32,9 @@ if (app.Environment.IsDevelopment())
 
 app.MapGet("/file/{id}", async (string id, [FromServices] IFileStorage storage, CancellationToken cancellationToken) =>
     {
-        var (contentType, content) = await storage.GetFileAsync(id, cancellationToken);
+        var (content, fileName, contentType) = await storage.GetFileAsync(id, cancellationToken);
 
-        return Results.Bytes(content, contentType);
+        return Results.File(content, contentType, fileName);
     })
     .WithName("GetFile")
     .WithTags("FileStorage")
