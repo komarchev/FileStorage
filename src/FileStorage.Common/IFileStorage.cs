@@ -2,7 +2,7 @@
 
 public interface IFileStorage
 {
-    Task SaveFileAsync(string path, Stream content, string contentType, CancellationToken cancellationToken);
+    Task<string> PutFileAsync(Stream content, string fileName, string contentType, CancellationToken cancellationToken);
     
-    Task<(string contentType, ReadOnlyMemory<byte> content)> LoadFileAsync(string path, CancellationToken cancellationToken);
+    Task<(string contentType, ReadOnlyMemory<byte> content)> GetFileAsync(string id, CancellationToken cancellationToken);
 }

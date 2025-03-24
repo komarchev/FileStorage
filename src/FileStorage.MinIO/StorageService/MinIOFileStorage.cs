@@ -1,4 +1,5 @@
 ﻿using System.Buffers;
+using System.Net.Mime;
 using FileStorage.Common;
 using FileStorage.MinIO.Configuration;
 using Microsoft.Extensions.Options;
@@ -7,7 +8,7 @@ using Minio.DataModel.Args;
 
 namespace FileStorage.MinIO.StorageService;
 
-public class MinIOFileStorage(IOptions<MinIOConfiguration> options) : IFileStorage
+public class MinIOFileStorage(IIdGenerator idGenerator, ICompressor compressor, IOptions<MinIOConfiguration> options) : IFileStorage
 {
     private readonly IMinioClient _minioClient = new MinioClient()
         .WithEndpoint(new Uri(options.Value.Uri))
@@ -16,23 +17,29 @@ public class MinIOFileStorage(IOptions<MinIOConfiguration> options) : IFileStora
     
     private readonly string _bucketName = options.Value.BucketName;
 
-    public async Task SaveFileAsync(string path, Stream content, string contentType, CancellationToken cancellationToken)
+    public async Task<string> PutFileAsync(Stream content, string fileName, string contentType, CancellationToken cancellationToken)
     {
         await EnsureBucketExists(_bucketName, cancellationToken);
+
+        var compressedData = await compressor.CompressAsync(content, fileName, cancellationToken);
+        
+        var id = idGenerator.CreateId();
         
         var putArgs = new PutObjectArgs()
             .WithBucket(_bucketName)
-            .WithObject(path)
-            .WithStreamData(content)
-            .WithObjectSize(content.Length)
-            .WithContentType(contentType);
+            .WithObject(id)
+            .WithStreamData(compressedData)
+            .WithObjectSize(compressedData.Length)
+            .WithContentType(MediaTypeNames.Application.Zip);
         
-        await _minioClient.PutObjectAsync(putArgs, cancellationToken);
+        await _minioClient.PutObjectAsync(putArgs, cancellationToken).ConfigureAwait(false);
+
+        return id;
     }
 
-    public async Task<(string contentType, ReadOnlyMemory<byte> content)> LoadFileAsync(string path, CancellationToken cancellationToken)
+    public async Task<(string contentType, ReadOnlyMemory<byte> content)> GetFileAsync(string id, CancellationToken cancellationToken)
     {
-        var (contentType, content) = await ReadObject(path, cancellationToken);
+        var (contentType, content) = await ReadObject(id, cancellationToken).ConfigureAwait(false);
         
         return (contentType, content);
     }
@@ -42,7 +49,7 @@ public class MinIOFileStorage(IOptions<MinIOConfiguration> options) : IFileStora
         var bucketExistArgs = new BucketExistsArgs()
             .WithBucket(bucketName);
         
-        if (await _minioClient.BucketExistsAsync(bucketExistArgs, cancellationToken))
+        if (await _minioClient.BucketExistsAsync(bucketExistArgs, cancellationToken).ConfigureAwait(false))
         {
             return;
         }
@@ -50,7 +57,7 @@ public class MinIOFileStorage(IOptions<MinIOConfiguration> options) : IFileStora
         var makeBucketArgs = new MakeBucketArgs()
             .WithBucket(bucketName);
 
-        await _minioClient.MakeBucketAsync(makeBucketArgs, cancellationToken);
+        await _minioClient.MakeBucketAsync(makeBucketArgs, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<(string contentType, ReadOnlyMemory<byte> content)> ReadObject(string path, CancellationToken cancellationToken)
@@ -59,7 +66,7 @@ public class MinIOFileStorage(IOptions<MinIOConfiguration> options) : IFileStora
             .WithBucket(_bucketName)
             .WithObject(path);
         
-        var objectStat = await _minioClient.StatObjectAsync(statObjectArgs, cancellationToken);
+        var objectStat = await _minioClient.StatObjectAsync(statObjectArgs, cancellationToken).ConfigureAwait(false);
         var objectSize = (int)objectStat.Size;
 
         var buffer = ArrayPool<byte>.Shared.Rent(objectSize);
@@ -80,7 +87,7 @@ public class MinIOFileStorage(IOptions<MinIOConfiguration> options) : IFileStora
                     }
                 });
 
-            await _minioClient.GetObjectAsync(getObjectArgs, cancellationToken);
+            await _minioClient.GetObjectAsync(getObjectArgs, cancellationToken).ConfigureAwait(false);
 
             var content = new ReadOnlyMemory<byte>(buffer, 0, objectSize);
             return (objectStat.ContentType, content);

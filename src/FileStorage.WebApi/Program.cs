@@ -1,6 +1,7 @@
 using FileStorage.Common;
 using FileStorage.MinIO.Configuration;
 using FileStorage.MinIO.StorageService;
+using FileStorage.WebApi.Services;
 using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,8 +13,11 @@ builder.Services.AddOpenApi();
 builder.Services.Configure<MinIOConfiguration>(builder.Configuration.GetSection("MinIO"));
 builder.Services.AddScoped<IFileStorage, MinIOFileStorage>();
 
-builder.Services.AddEndpointsApiExplorer(); // <!-- Add this line
-builder.Services.AddSwaggerGen(); // <!-- Add this line
+builder.Services.AddSingleton<IIdGenerator, IdGenerator>();
+builder.Services.AddSingleton<ICompressor, ZipCompressor>();
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
@@ -22,48 +26,33 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     
-    app.UseSwagger(); // <!-- Add this line
-    app.UseSwaggerUI(); // <!-- Add this line
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+app.MapGet("/file/{id}", async (string id, [FromServices] IFileStorage storage, CancellationToken cancellationToken) =>
+    {
+        var (contentType, content) = await storage.GetFileAsync(id, cancellationToken);
 
-app.MapGet("/file/{path}", async (string path, [FromServices] IFileStorage storage, CancellationToken cancellationToken) =>
-{
-    var (contentType, content) = await storage.LoadFileAsync(path, cancellationToken);
+        return Results.Bytes(content, contentType);
+    })
+    .WithName("GetFile")
+    .WithTags("FileStorage")
+    .WithDescription("Read file from storage")
+    .Produces<FileContentResult>();
 
-    return Results.Bytes(content, contentType);
-});
-
-app.MapPut("/file/{path}", async (string path, IFormFile file, [FromServices] IFileStorage storage, CancellationToken cancellationToken) =>
+app.MapPost("/file/", async (IFormFile file, [FromServices] IFileStorage storage, CancellationToken cancellationToken) =>
     {
         await using var stream = file.OpenReadStream();
 
-        await storage.SaveFileAsync(path, stream, file.ContentType, cancellationToken);
-    })
-    .DisableAntiforgery();
+        var id = await storage.PutFileAsync(stream, file.FileName, file.ContentType, cancellationToken);
 
-
-app.MapGet("/weatherforecast", () =>
-    {
-        var forecast = Enumerable.Range(1, 5).Select(index =>
-                new WeatherForecast
-                (
-                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                    Random.Shared.Next(-20, 55),
-                    summaries[Random.Shared.Next(summaries.Length)]
-                ))
-            .ToArray();
-        return forecast;
+        return Results.CreatedAtRoute("GetFile", new { id });
     })
-    .WithName("GetWeatherForecast");
+    .DisableAntiforgery()
+    .WithName("PutFile")
+    .WithTags("FileStorage")
+    .WithDescription("Put file to storage")
+    .Produces<CreatedAtRouteResult>();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
