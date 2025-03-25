@@ -6,7 +6,7 @@ namespace FileStorage.WebApi.Services;
 /// <summary>
 /// Генератор идентификаторов.
 /// </summary>
-public class IdGenerator : IIdGenerator
+public class RandomIdGenerator : IIdGenerator
 {
     private const int BYTE_SIZE = 8;
     private const int DEFAULT_ID_SIZE = 32;
@@ -16,17 +16,17 @@ public class IdGenerator : IIdGenerator
     private readonly int _idSize;
     
     /// <summary>
-    /// Инициализирует новый экземпляр <see cref="IdGenerator"/>.
+    /// Инициализирует новый экземпляр <see cref="RandomIdGenerator"/>.
     /// </summary>
-    public IdGenerator() : this(DEFAULT_ID_SIZE)
+    public RandomIdGenerator() : this(DEFAULT_ID_SIZE)
     {
     }
 
     /// <summary>
-    /// Инициализирует новый экземпляр <see cref="IdGenerator"/>.
+    /// Инициализирует новый экземпляр <see cref="RandomIdGenerator"/>.
     /// </summary>
     /// <param name="idSize">Размер идентификатора (символов).</param>
-    public IdGenerator(int idSize)
+    public RandomIdGenerator(int idSize)
     {
         _rng = RandomNumberGenerator.Create();
         _idSize = idSize;

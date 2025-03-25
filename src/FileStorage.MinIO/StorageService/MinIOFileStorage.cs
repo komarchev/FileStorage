@@ -13,41 +13,38 @@ public class MinIOFileStorage(IIdGenerator idGenerator, ICompressor compressor, 
         .WithCredentials(options.Value.AccessKey, options.Value.SecretKey)
         .Build(); 
     
-    private readonly string _bucketName = options.Value.BucketName;
-
-    public async Task<string> PutFileAsync(Stream content, string fileName, string contentType, CancellationToken cancellationToken)
+    public async Task<string> PutFileAsync(Stream content, string fileName, string category, CancellationToken cancellationToken)
     {
-        await EnsureBucketExists(_bucketName, cancellationToken).ConfigureAwait(false);
+        await EnsureBucketExists(category, cancellationToken).ConfigureAwait(false);
 
         var compressedData = await compressor.CompressAsync(content, fileName, cancellationToken).ConfigureAwait(false);
         
         var id = idGenerator.CreateId();
-        
+
         var putArgs = new PutObjectArgs()
-            .WithBucket(_bucketName)
+            .WithBucket(category)
             .WithObject(id)
             .WithStreamData(compressedData)
-            .WithObjectSize(compressedData.Length)
-            .WithContentType(contentType);
+            .WithObjectSize(compressedData.Length);
         
         await _minioClient.PutObjectAsync(putArgs, cancellationToken).ConfigureAwait(false);
 
         return id;
     }
 
-    public async Task<(Stream content, string fileName, string contentType)> GetFileAsync(string id, CancellationToken cancellationToken)
+    public async Task<(Stream content, string fileName)> GetFileAsync(string id, string category, CancellationToken cancellationToken)
     {
-        await EnsureBucketExists(_bucketName, cancellationToken).ConfigureAwait(false);
+        await EnsureBucketExists(category, cancellationToken).ConfigureAwait(false);
         
         var statObjectArgs = new StatObjectArgs()
-            .WithBucket(_bucketName)
+            .WithBucket(category)
             .WithObject(id);
         var objectStat = await _minioClient.StatObjectAsync(statObjectArgs, cancellationToken).ConfigureAwait(false);
 
         var compressedContent = new MemoryStream((int)objectStat.Size);
         
         var getObjectArgs = new GetObjectArgs()
-            .WithBucket(_bucketName)
+            .WithBucket(category)
             .WithObject(id)
             .WithCallbackStream(stream => stream.CopyTo(compressedContent));
         
@@ -57,13 +54,23 @@ public class MinIOFileStorage(IIdGenerator idGenerator, ICompressor compressor, 
 
         var (content, fileName) = await compressor.DecompressAsync(compressedContent, cancellationToken).ConfigureAwait(false);
 
-        return (content, fileName, objectStat.ContentType);
+        return (content, fileName);
     }
 
-    private async Task EnsureBucketExists(string bucketName, CancellationToken cancellationToken)
+    public Task<bool> CheckFileAsync(string id, string category, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<bool> DeleteFileAsync(string id, string category, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
+
+    private async Task EnsureBucketExists(string category, CancellationToken cancellationToken)
     {
         var bucketExistArgs = new BucketExistsArgs()
-            .WithBucket(bucketName);
+            .WithBucket(category);
         
         if (await _minioClient.BucketExistsAsync(bucketExistArgs, cancellationToken).ConfigureAwait(false))
         {
@@ -71,7 +78,7 @@ public class MinIOFileStorage(IIdGenerator idGenerator, ICompressor compressor, 
         }
 
         var makeBucketArgs = new MakeBucketArgs()
-            .WithBucket(bucketName);
+            .WithBucket(category);
 
         await _minioClient.MakeBucketAsync(makeBucketArgs, cancellationToken).ConfigureAwait(false);
     }

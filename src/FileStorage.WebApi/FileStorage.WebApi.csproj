@@ -19,6 +19,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\FileStorage.Common\FileStorage.Common.csproj" />
+      <ProjectReference Include="..\FileStorage.FileSystem\FileStorage.FileSystem.csproj" />
       <ProjectReference Include="..\FileStorage.MinIO\FileStorage.MinIO.csproj" />
     </ItemGroup>
 

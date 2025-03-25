@@ -7,6 +7,4 @@ public class MinIOConfiguration
     public string AccessKey { get; set; } = null!;
     
     public string SecretKey { get; set; } = null!;
-    
-    public string BucketName { get; set; } = null!;
 }
