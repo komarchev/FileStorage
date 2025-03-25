@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileStorage.MinIO", "FileSt
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileStorage.FileSystem", "FileStorage.FileSystem\FileStorage.FileSystem.csproj", "{16CC85AB-196E-49B7-ADB8-7337D5E38CC9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileStorage.MongoDb.GridFs", "FileStorage.MongoDb.GridFs\FileStorage.MongoDb.GridFs.csproj", "{C1A33D01-4B33-4DA7-88A1-A9632A62A14D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,5 +37,9 @@ Global
 		{16CC85AB-196E-49B7-ADB8-7337D5E38CC9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{16CC85AB-196E-49B7-ADB8-7337D5E38CC9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{16CC85AB-196E-49B7-ADB8-7337D5E38CC9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C1A33D01-4B33-4DA7-88A1-A9632A62A14D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1A33D01-4B33-4DA7-88A1-A9632A62A14D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1A33D01-4B33-4DA7-88A1-A9632A62A14D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1A33D01-4B33-4DA7-88A1-A9632A62A14D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

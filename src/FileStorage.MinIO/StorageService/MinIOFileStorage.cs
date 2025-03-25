@@ -3,6 +3,7 @@ using FileStorage.MinIO.Configuration;
 using Microsoft.Extensions.Options;
 using Minio;
 using Minio.DataModel.Args;
+using Minio.Exceptions;
 
 namespace FileStorage.MinIO.StorageService;
 
@@ -57,9 +58,23 @@ public class MinIOFileStorage(IIdGenerator idGenerator, ICompressor compressor, 
         return (content, fileName);
     }
 
-    public Task<bool> CheckFileAsync(string id, string category, CancellationToken cancellationToken)
+    public async Task<bool> CheckFileAsync(string id, string category, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        await EnsureBucketExists(category, cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            var statObjectArgs = new StatObjectArgs()
+                .WithBucket(category)
+                .WithObject(id);
+            var objectStat = await _minioClient.StatObjectAsync(statObjectArgs, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ObjectNotFoundException)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     public Task<bool> DeleteFileAsync(string id, string category, CancellationToken cancellationToken)

@@ -21,13 +21,10 @@ public class FileSystemStorage(IIdGenerator idGenerator, ICompressor compressor,
         var path = Path.Combine(directoryPath, id);
 
         var dataHash = await compressedData.GetHashAsync(cancellationToken).ConfigureAwait(false);
-        
-        await using var fileStream = File.Create(path);
-        await compressedData.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
-        // ReSharper disable once DisposeOnUsingVariable
-        await fileStream.DisposeAsync().ConfigureAwait(false);
-        
-        var storedHash = await new FileInfo(path).GetHashAsync(cancellationToken).ConfigureAwait(false);
+
+        await SaveFileAsync(path, compressedData, cancellationToken).ConfigureAwait(false);
+
+        var storedHash = await GetFileHashAsync(path, cancellationToken).ConfigureAwait(false);
 
         if (!dataHash.SequenceEqual(storedHash))
         {
@@ -71,5 +68,19 @@ public class FileSystemStorage(IIdGenerator idGenerator, ICompressor compressor,
         File.Delete(path);
 
         return Task.FromResult(true);
+    }
+    
+    private static async Task SaveFileAsync(string path, Stream content, CancellationToken cancellationToken)
+    {
+        content.Seek(0, SeekOrigin.Begin);
+        await using var fileStream = File.Create(path);
+        await content.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<byte[]> GetFileHashAsync(string path, CancellationToken cancellationToken)
+    {
+        await using var fileStream = File.OpenRead(path);
+        var fileHash = await fileStream.GetHashAsync(cancellationToken).ConfigureAwait(false);
+        return fileHash;
     }
 }

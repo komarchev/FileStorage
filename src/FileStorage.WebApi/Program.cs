@@ -1,6 +1,10 @@
 using FileStorage.Common;
 using FileStorage.FileSystem.Configuration;
 using FileStorage.FileSystem.StorageService;
+using FileStorage.MinIO.Configuration;
+using FileStorage.MinIO.StorageService;
+using FileStorage.MongoDb.GridFs.Configuration;
+using FileStorage.MongoDb.GridFs.StorageService;
 using FileStorage.WebApi.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,10 +15,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 
 //builder.Services.Configure<MinIOConfiguration>(builder.Configuration.GetSection("MinIO"));
-builder.Services.Configure<FileSystemConfiguration>(builder.Configuration.GetSection("FileStorage"));
-builder.Services.AddScoped<IFileStorage, FileSystemStorage>();
+//builder.Services.Configure<FileSystemConfiguration>(builder.Configuration.GetSection("FileStorage"));
+builder.Services.Configure<MongoDbConfiguration>(builder.Configuration.GetSection("MongoDb"));
+//builder.Services.AddScoped<IFileStorage, MinIOFileStorage>();
+builder.Services.AddScoped<IFileStorage, MongoDbFileStorage>();
 
-builder.Services.AddSingleton<IIdGenerator, GuidIdGenerator>();
+//builder.Services.AddSingleton<IIdGenerator, RandomIdGenerator>();
 builder.Services.AddSingleton<ICompressor, ZipCompressor>();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -33,6 +39,13 @@ if (app.Environment.IsDevelopment())
 
 app.MapGet("/file/{category}/{id}", async (string category, string id, [FromServices] IFileStorage storage, CancellationToken cancellationToken) =>
     {
+        var fileExists = await storage.CheckFileAsync(id, category, cancellationToken);
+        
+        if (!fileExists)
+        {
+            return Results.NotFound();
+        }
+
         var (content, fileName) = await storage.GetFileAsync(id, category, cancellationToken);
 
         return Results.File(content, string.Empty, fileName);
@@ -40,7 +53,8 @@ app.MapGet("/file/{category}/{id}", async (string category, string id, [FromServ
     .WithName("GetFile")
     .WithTags("FileStorage")
     .WithDescription("Read file from storage")
-    .Produces<FileContentResult>();
+    .Produces<FileContentResult>()
+    .Produces<NotFoundResult>();
 
 app.MapPost("/file/{category}", async (string category, IFormFile file, [FromServices] IFileStorage storage, CancellationToken cancellationToken) =>
     {
